@@ -1,51 +1,56 @@
 pipeline {
-agent any
+    agent any
 
-tools {
-    maven 'Maven'
-    jdk 'JDK'
-}
+    tools {
+        maven 'Maven'   // Must match Jenkins Global Tool Configuration
+        jdk 'JDK'
+    }
 
-stages {
+    stages {
 
-    stage('Checkout') {
-        steps {
-            git branch: 'main', url: 'https://github.com/thakurkatawa/MyMavenSeleniumApp02.git'
+        stage('Checkout') {
+            steps {
+                git branch: 'main', url: 'https://github.com/thakurkatawa/MyMavenSeleniumApp02.git'
+            }
+        }
+
+        stage('Build (Compile)') {
+            steps {
+                sh 'mvn clean compile'
+            }
+        }
+
+        stage('Run Selenium Tests') {
+            steps {
+                // Allow pipeline to continue even if tests fail
+                sh 'mvn test -Dmaven.test.failure.ignore=true'
+            }
+        }
+
+        stage('Package') {
+            steps {
+                // Skip tests here to avoid running twice
+                sh 'mvn package -DskipTests'
+            }
         }
     }
 
-    stage('Compile') {
-        steps {
-            sh 'mvn clean compile'
+    post {
+        always {
+            // Publish test reports
+            junit '**/target/surefire-reports/*.xml'
+        }
+
+        success {
+            echo 'Build and Selenium tests executed successfully!'
+        }
+
+        unstable {
+            echo 'Some tests failed. Build is unstable.'
+        }
+
+        failure {
+            echo 'Build failed due to compilation or configuration errors.'
         }
     }
-
-    stage('Run Selenium Tests') {
-        steps {
-            sh 'mvn test'
-        }
-    }
-
-    stage('Package') {
-        steps {
-            sh 'mvn package'
-        }
-    }
-}
-
-post {
-    always {
-        junit '**/target/surefire-reports/*.xml'
-    }
-
-    success {
-        echo 'Build and Selenium tests executed successfully!'
-    }
-
-    failure {
-        echo 'Build failed!'
-    }
-}
-
-
 }
